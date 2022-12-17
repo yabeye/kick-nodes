@@ -1,0 +1,25 @@
+{
+  "name": "secure-otp",
+  "version": "0.1.0",
+  "description": "A node JS app that generates and validates a secure OTP code.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "node",
+    "nodejs",
+    "otp",
+    "security",
+    "authentication"
+  ],
+  "author": "Yeabsera Bekele",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "nodemon": "^2.0.20",
+    "redis": "^4.5.1"
+  }
+}
