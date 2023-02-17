@@ -14,15 +14,11 @@ const ALLOWED_FILE_TYPES = [
 ];
 const ALLOWED_FILE_EXTENSIONS = ['.jpeg', '.png', '.jpg', '.gif'];
 
-// ACTUAL CODE,
-
 const storage = multer.diskStorage({
   destination: DEST_DIR,
   filename: (req, file, callback) => {
-    return callback(
-      null,
-      `${Date.now()}_${file.fieldname}${path.extname(file.originalname)}`
-    );
+    console.log('File ', file);
+    return callback(null, `${Date.now()}_${file.originalname}`);
   },
 });
 
@@ -59,15 +55,30 @@ router.post('/single', upload.single('product-image'), (req, res, next) => {
   });
 });
 
-router.post('/multiple', upload, (req, res, next) => {
-  return res.status(201).json({
-    code: 201,
-    success: true,
-    message: 'Files uploaded successfully',
-    data: {
-      productImagesUrls: [],
-    },
-  });
-});
+router.post(
+  '/multiple',
+  upload.fields([
+    { name: 'product-image', maxCount: 1 },
+    { name: 'product-image-alt', maxCount: 1 },
+  ]),
+  (req, res, next) => {
+    const { files } = req;
+    var rawImageFilesArray = Object.keys(files).map((key) => [key, files[key]]);
+
+    const productImageUrls = [];
+    rawImageFilesArray.forEach((r) =>
+      productImageUrls.push(`${BASE_IMAGE_URL}${r[1][0].filename}`)
+    );
+
+    return res.status(201).json({
+      code: 201,
+      success: true,
+      message: 'Files are uploaded successfully',
+      data: {
+        productImageUrls: productImageUrls,
+      },
+    });
+  }
+);
 
 module.exports = router;
