@@ -9,14 +9,16 @@ app.use(express.json());
 const uploadRoute = require('./upload.routes');
 
 // Routes
-app.use('/kick-nodes/product', express.static('upload/images'));
+app.use('/kick-nodes/product', express.static('public/images'));
 app.use('/api/upload', uploadRoute);
 
 app.use((err, req, res, next) => {
-  let serverErrorMessage = err.message ?? 'We are unable to do that!.';
+  let serverErrorMessage = err.message ?? 'We are unable to do that!';
 
   if (err instanceof multer.MulterError) {
     serverErrorMessage = err.message;
+  } else if (false) {
+    // TODO: Handle other errors here!
   }
 
   return res.status(500).json({

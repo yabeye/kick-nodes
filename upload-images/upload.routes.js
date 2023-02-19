@@ -1,8 +1,15 @@
 const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
-const DEST_DIR = './upload/images';
+
+const MIN_IMAGE_DIM = 300;
+const IMAGE_QUALITY = 40; // HALF
+
+const sharp = require('sharp');
+
+const DEST_DIR = './public/images';
 const BASE_IMAGE_URL = 'http://localhost:4100/kick-nodes/product/';
+const FACTOR = 1 / 6;
 
 // All files except an image (not accepting a json, or a video!)
 // This can be change according to the requirement , but you got the point!
@@ -18,7 +25,7 @@ const storage = multer.diskStorage({
   destination: DEST_DIR,
   filename: (req, file, callback) => {
     console.log('File ', file);
-    return callback(null, `${Date.now()}_${file.originalname}`);
+    return callback(null, `${Date.now()}-${file.originalname}`);
   },
 });
 
@@ -43,17 +50,59 @@ const upload = multer({
   },
 });
 
-router.post('/single', upload.single('product-image'), (req, res, next) => {
-  return res.status(201).json({
-    code: 201,
-    success: true,
-    message: 'File uploaded successfully',
-    data: {
-      productUrl: BASE_IMAGE_URL + req.file.filename,
-      // file: req.file, // Full file object.
-    },
-  });
-});
+const handleImageCompression = async (req, res, next) => {
+  const { file } = req;
+  const filePath = path.join(__dirname, '/', file.path);
+
+  const extName = path.extname(filePath);
+  const filenameOnly = file.filename.substring(
+    0,
+    file.filename.length - extName.length
+  );
+
+  let compressedImageUrl = filenameOnly + '-300x300' + extName;
+  const compressedImageFilePath = path.join(
+    __dirname,
+    '/',
+    file.destination,
+    compressedImageUrl
+  );
+  compressedImageUrl = BASE_IMAGE_URL + compressedImageUrl;
+
+  try {
+    await sharp('./' + file.path)
+      .resize(MIN_IMAGE_DIM)
+      .jpeg({
+        quality: IMAGE_QUALITY,
+        chromaSubsampling: '4:4:4',
+      })
+      .toFile(compressedImageFilePath);
+
+    req.compressedImageUrl = compressedImageUrl;
+    next();
+  } catch (error) {
+    console.error(error.message);
+    next(error);
+  }
+};
+
+router.post(
+  '/single',
+  upload.single('product-image'),
+  handleImageCompression,
+  (req, res, next) => {
+    return res.status(201).json({
+      code: 201,
+      success: true,
+      message: 'File uploaded successfully',
+      data: {
+        productUrl: BASE_IMAGE_URL + req.file.filename,
+        compressedImageUrl: req.compressedImageUrl,
+        // file: req.file, // Full file object.
+      },
+    });
+  }
+);
 
 router.post(
   '/multiple',
@@ -61,6 +110,7 @@ router.post(
     { name: 'product-image', maxCount: 1 },
     { name: 'product-image-alt', maxCount: 1 },
   ]),
+  handleImageCompression,
   (req, res, next) => {
     const { files } = req;
     var rawImageFilesArray = Object.keys(files).map((key) => [key, files[key]]);
