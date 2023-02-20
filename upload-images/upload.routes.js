@@ -13,6 +13,7 @@ const FACTOR = 1 / 6;
 
 // All files except an image (not accepting a json, or a video!)
 // This can be change according to the requirement , but you got the point!
+
 const ALLOWED_FILE_TYPES = [
   'images/jpeg',
   'images/png',
@@ -20,6 +21,64 @@ const ALLOWED_FILE_TYPES = [
   'images/gif',
 ];
 const ALLOWED_FILE_EXTENSIONS = ['.jpeg', '.png', '.jpg', '.gif'];
+
+// Compression !
+const compressSingleImage = async (file) => {
+  const filePath = path.join(__dirname, '/', file.path);
+  const extName = path.extname(filePath);
+  const filenameOnly = file.filename.substring(
+    0,
+    file.filename.length - extName.length
+  );
+
+  let compressedImageUrl =
+    filenameOnly + `-${MIN_IMAGE_DIM}xOriginal` + extName;
+  const compressedImageFilePath = path.join(
+    __dirname,
+    '/',
+    file.destination,
+    compressedImageUrl
+  );
+  compressedImageUrl = BASE_IMAGE_URL + compressedImageUrl;
+
+  await sharp('./' + file.path)
+    .resize(MIN_IMAGE_DIM)
+    .jpeg({
+      quality: IMAGE_QUALITY,
+      chromaSubsampling: '4:4:4',
+    })
+    .toFile(compressedImageFilePath);
+  return compressedImageUrl;
+};
+
+const mapToMultiFile = async (files) => {
+  const someArray = [];
+  await Promise.all(
+    Object.values(files).map(async (fileArray) => {
+      const file = fileArray[0];
+      const newFilename = `${MIN_IMAGE_DIM}xOriginal-` + file.filename;
+
+      await sharp(file.path)
+        .resize(MIN_IMAGE_DIM)
+        .toFormat('jpeg')
+        .jpeg({ quality: IMAGE_QUALITY })
+        .toFile(`public/images/${newFilename}`);
+
+      someArray.push(BASE_IMAGE_URL + newFilename);
+    })
+  );
+  return someArray;
+};
+
+const generateImageUrlFromFiles = (files) => {
+  const originalProductImageUrls = [];
+  var rawImageFilesArray = Object.keys(files).map((key) => [key, files[key]]);
+
+  rawImageFilesArray.forEach((r) =>
+    originalProductImageUrls.push(`${BASE_IMAGE_URL}${r[1][0].filename}`)
+  );
+  return originalProductImageUrls;
+};
 
 const storage = multer.diskStorage({
   destination: DEST_DIR,
@@ -46,42 +105,23 @@ const upload = multer({
     return callback(null, true);
   },
   limits: {
-    fileSize: 1024 * 1024,
+    fileSize: 1 * 1024 * 1024,
   },
 });
 
 const handleImageCompression = async (req, res, next) => {
-  const { file } = req;
-  const filePath = path.join(__dirname, '/', file.path);
-
-  const extName = path.extname(filePath);
-  const filenameOnly = file.filename.substring(
-    0,
-    file.filename.length - extName.length
-  );
-
-  let compressedImageUrl = filenameOnly + '-300x300' + extName;
-  const compressedImageFilePath = path.join(
-    __dirname,
-    '/',
-    file.destination,
-    compressedImageUrl
-  );
-  compressedImageUrl = BASE_IMAGE_URL + compressedImageUrl;
+  const { file, files } = req;
 
   try {
-    await sharp('./' + file.path)
-      .resize(MIN_IMAGE_DIM)
-      .jpeg({
-        quality: IMAGE_QUALITY,
-        chromaSubsampling: '4:4:4',
-      })
-      .toFile(compressedImageFilePath);
-
-    req.compressedImageUrl = compressedImageUrl;
+    if (file) {
+      req.body.image = await compressSingleImage(file);
+    } else if (files) {
+      req.body.images = await mapToMultiFile(files);
+    } else {
+      next(multer.MulterError('Unable to find file(s)'));
+    }
     next();
   } catch (error) {
-    console.error(error.message);
     next(error);
   }
 };
@@ -91,14 +131,19 @@ router.post(
   upload.single('product-image'),
   handleImageCompression,
   (req, res, next) => {
+    const { body } = req;
+    const originalProductImageUrl = BASE_IMAGE_URL + req.file.filename;
+
+    // ... Additional logic goes here!
+
     return res.status(201).json({
       code: 201,
       success: true,
       message: 'File uploaded successfully',
       data: {
-        productUrl: BASE_IMAGE_URL + req.file.filename,
-        compressedImageUrl: req.compressedImageUrl,
-        // file: req.file, // Full file object.
+        // productUrl: originalProductImageUrl,
+        // compressedImageUrl: body.image,
+        productImageUrls: [originalProductImageUrl, body.image],
       },
     });
   }
@@ -112,20 +157,17 @@ router.post(
   ]),
   handleImageCompression,
   (req, res, next) => {
-    const { files } = req;
-    var rawImageFilesArray = Object.keys(files).map((key) => [key, files[key]]);
+    const { files, body } = req;
+    const originalProductImageUrls = generateImageUrlFromFiles(files);
 
-    const productImageUrls = [];
-    rawImageFilesArray.forEach((r) =>
-      productImageUrls.push(`${BASE_IMAGE_URL}${r[1][0].filename}`)
-    );
+    // ... Additional logic goes here!
 
     return res.status(201).json({
       code: 201,
       success: true,
       message: 'Files are uploaded successfully',
       data: {
-        productImageUrls: productImageUrls,
+        productImagesUrls: [...originalProductImageUrls, ...body.images],
       },
     });
   }
