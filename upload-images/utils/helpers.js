@@ -21,13 +21,17 @@ module.exports.compressSingleImage = async (file) => {
 
   let compressedImageUrl =
     filenameOnly + `-${MIN_IMAGE_DIM}xOriginal` + extName;
+  console.log('Files', file);
   const compressedImageFilePath = path.join(
-    __dirname,
-    '/',
+    // __dirname,
+    // '/',
     file.destination,
     compressedImageUrl
   );
   compressedImageUrl = BASE_IMAGE_URL + compressedImageUrl;
+
+  console.log('Pathic', file.path);
+  console.log('Destination:', compressedImageFilePath);
 
   await sharp('./' + file.path)
     .resize(MIN_IMAGE_DIM)

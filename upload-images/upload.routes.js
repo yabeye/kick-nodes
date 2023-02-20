@@ -1,7 +1,7 @@
 const router = require('express').Router();
 
-const { handleImageCompression } = require('./compress.middleware');
-const { upload } = require('./helpers');
+const { handleImageCompression } = require('./middlewares/compress.middleware');
+const { upload } = require('./utils/helpers');
 const {
   uploadSingleImageController,
   uploadMultipleImageController,

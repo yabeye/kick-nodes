@@ -1,5 +1,5 @@
-const { generateImageUrlFromFiles } = require('./helpers');
-const { BASE_IMAGE_URL } = require('./constants');
+const { generateImageUrlFromFiles } = require('./utils/helpers');
+const { BASE_IMAGE_URL } = require('./utils/constants');
 
 module.exports.uploadSingleImageController = async (req, res, next) => {
   const { body } = req;

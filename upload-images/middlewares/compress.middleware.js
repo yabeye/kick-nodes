@@ -1,6 +1,6 @@
 const multer = require('multer');
 
-const { compressSingleImage, mapToMultiFile } = require('./helpers');
+const { compressSingleImage, mapToMultiFile } = require('../utils/helpers');
 
 module.exports.handleImageCompression = async (req, res, next) => {
   const { file, files } = req;
